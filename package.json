@@ -1,0 +1,12 @@
+{
+  "name": "puyotris",
+  "version": "1.0.0",
+  "description": "Puyo Puyo x Tetris mix - browser game with local 2P and a genetic-algorithm AI opponent",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "serve": "node tools/serve.js",
+    "train": "node tools/train-node.js"
+  },
+  "license": "MIT"
+}

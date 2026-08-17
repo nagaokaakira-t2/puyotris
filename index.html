@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PUYOTRIS - ぷよぷよ×テトリス</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+
+  <header id="marquee">
+    <h1 id="logo"><span>PUYO</span><span id="logo-tris">TRIS</span></h1>
+    <p id="tagline">連鎖もライン消しも、ぜんぶ乗せ。</p>
+  </header>
+
+  <!-- ============ MAIN MENU ============ -->
+  <nav id="screen-menu" class="screen">
+    <button class="menu-btn" data-goto="2p">
+      <span class="menu-btn-title">2人対戦</span>
+      <span class="menu-btn-sub">1台のキーボードで対戦</span>
+    </button>
+    <button class="menu-btn" data-goto="vsai">
+      <span class="menu-btn-title">AI対戦</span>
+      <span class="menu-btn-sub">遺伝的アルゴリズムで学習したAIと対戦</span>
+    </button>
+    <button class="menu-btn" data-goto="training">
+      <span class="menu-btn-title">AI訓練ラボ</span>
+      <span class="menu-btn-sub">AIを世代交代させて鍛える</span>
+    </button>
+    <button class="menu-btn" data-goto="keyconfig">
+      <span class="menu-btn-title">キー設定</span>
+      <span class="menu-btn-sub">P1 / P2 のボタン割り当てを変更</span>
+    </button>
+    <button class="menu-btn" data-goto="rules">
+      <span class="menu-btn-title">遊び方</span>
+      <span class="menu-btn-sub">ルールを見る</span>
+    </button>
+  </nav>
+
+  <!-- ============ KEY CONFIG ============ -->
+  <section id="screen-keyconfig" class="screen" hidden>
+    <div class="panel-head">
+      <button class="back-btn" data-goto="menu">&larr; メニューへ</button>
+      <h2>キー設定</h2>
+    </div>
+    <div class="keyconfig-tabs">
+      <button class="tab-btn active" data-player="p1">P1</button>
+      <button class="tab-btn" data-player="p2">P2</button>
+    </div>
+    <div id="conflict-warning" class="conflict-warning" hidden></div>
+    <ul id="keybind-list" class="keybind-list"></ul>
+    <button id="reset-keys-btn" class="ghost-btn">このプレイヤーの設定をリセット</button>
+  </section>
+
+  <!-- ============ RULES ============ -->
+  <section id="screen-rules" class="screen" hidden>
+    <div class="panel-head">
+      <button class="back-btn" data-goto="menu">&larr; メニューへ</button>
+      <h2>遊び方</h2>
+    </div>
+    <div class="rules-body">
+      <p>テトリミノ(I/O/T/S/Z/J/L)が降ってきます。各ブロックにはぷよぷよカラーがランダムに1色ずつ割り当てられています。</p>
+      <p><strong>2種類の消し方があります：</strong></p>
+      <p>① <strong>ライン消し</strong> - 横一列がすべて埋まると、その行が消えます(テトリス方式)。</p>
+      <p>② <strong>色消し</strong> - 同じ色のブロックが上下左右に4つ以上つながると消えます(ぷよぷよ方式)。</p>
+      <p>消えたあとブロックは1マスずつ落下し、そこでまた消えると<strong>連鎖</strong>になります。連鎖やライン消しが多いほど、相手の盤面に「おじゃまブロック」を送り込めます。相手より先に積み上がってしまったら負けです。</p>
+    </div>
+  </section>
+
+  <!-- ============ GAME (2P / VS AI) ============ -->
+  <section id="screen-game" class="screen" hidden>
+    <div class="panel-head">
+      <button class="back-btn" data-goto="menu">&larr; メニューへ</button>
+      <h2 id="game-mode-title">対戦</h2>
+      <button id="pause-btn" class="ghost-btn">一時停止</button>
+    </div>
+    <div id="game-arena">
+      <div class="board-column">
+        <div class="board-label" id="label-p1">PLAYER 1</div>
+        <canvas id="canvas-p1"></canvas>
+      </div>
+      <div class="board-column">
+        <div class="board-label" id="label-p2">PLAYER 2</div>
+        <canvas id="canvas-p2"></canvas>
+      </div>
+    </div>
+    <div id="game-overlay" class="game-overlay" hidden>
+      <div class="overlay-card">
+        <h3 id="overlay-title">一時停止</h3>
+        <button id="overlay-resume-btn" class="menu-btn small">再開</button>
+        <button id="overlay-restart-btn" class="menu-btn small">もう一度</button>
+        <button class="menu-btn small" data-goto="menu">メニューへ</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ AI TRAINING LAB ============ -->
+  <section id="screen-training" class="screen" hidden>
+    <div class="panel-head">
+      <button class="back-btn" data-goto="menu">&larr; メニューへ</button>
+      <h2>AI訓練ラボ</h2>
+    </div>
+    <p class="training-intro">
+      遺伝的アルゴリズムでAIの「盤面の読み方(重みベクトル)」を進化させます。世代を重ねるごとに、より上手なAIが生き残ります。
+    </p>
+    <div class="training-controls">
+      <label>個体数
+        <input type="number" id="train-pop" value="16" min="4" max="60">
+      </label>
+      <label>最大手数/個体
+        <input type="number" id="train-maxpieces" value="150" min="30" max="600" step="10">
+      </label>
+      <button id="train-run-btn" class="menu-btn small">1世代を実行</button>
+      <button id="train-run5-btn" class="menu-btn small">5世代を実行</button>
+      <button id="train-save-btn" class="ghost-btn">このAIを使う</button>
+      <button id="train-export-btn" class="ghost-btn">JSONを保存(ダウンロード)</button>
+    </div>
+    <div id="train-status" class="train-status">まだ訓練していません。「1世代を実行」を押してください。</div>
+    <canvas id="train-graph" width="640" height="160"></canvas>
+    <ul id="train-log" class="train-log"></ul>
+  </section>
+
+</div>
+
+<div id="key-capture-overlay" hidden>
+  <div class="capture-card">
+    <p>新しいキーを押してください…</p>
+    <button id="capture-cancel-btn" class="ghost-btn">キャンセル</button>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
