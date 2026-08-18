@@ -77,6 +77,14 @@ html, body {
   #screen-menu { grid-template-columns: 1fr; }
 }
 
+.level-select {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
 .menu-btn {
   background: linear-gradient(160deg, var(--panel-2), var(--panel));
   border: 1px solid rgba(0,229,255,0.15);
