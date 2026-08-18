@@ -20,9 +20,13 @@
       <span class="menu-btn-title">2人対戦</span>
       <span class="menu-btn-sub">1台のキーボードで対戦</span>
     </button>
-    <button class="menu-btn" data-goto="vsai-level">
+    <button class="menu-btn" data-goto="vsai">
       <span class="menu-btn-title">AI対戦</span>
       <span class="menu-btn-sub">遺伝的アルゴリズムで学習したAIと対戦</span>
+    </button>
+    <button class="menu-btn" data-goto="mirror">
+      <span class="menu-btn-title">自分を模倣するAI</span>
+      <span class="menu-btn-sub">対戦しながらあなたの打ち方をリアルタイム学習</span>
     </button>
     <button class="menu-btn" data-goto="training">
       <span class="menu-btn-title">AI訓練ラボ</span>
@@ -68,33 +72,12 @@
     </div>
   </section>
 
-  <!-- ============ VS AI - LEVEL SELECT ============ -->
-  <section id="screen-vsai-level" class="screen" hidden>
-    <div class="panel-head">
-      <button class="back-btn" data-goto="menu">&larr; メニューへ</button>
-      <h2>AI対戦 - 難易度選択</h2>
-    </div>
-    <nav class="level-select">
-      <button class="menu-btn level-btn" data-level="easy">
-        <span class="menu-btn-title">初心者</span>
-        <span class="menu-btn-sub">AIの反応が遅く、たまにミスもする。おじゃまブロックも控えめ</span>
-      </button>
-      <button class="menu-btn level-btn" data-level="normal">
-        <span class="menu-btn-title">標準</span>
-        <span class="menu-btn-sub">AIの実力をそのまま発揮。ちょうどいい歯ごたえ</span>
-      </button>
-      <button class="menu-btn level-btn" data-level="hard">
-        <span class="menu-btn-title">上級</span>
-        <span class="menu-btn-sub">反応が速くミスなし。おじゃまブロックも強気に送ってくる</span>
-      </button>
-    </nav>
-  </section>
-
   <!-- ============ GAME (2P / VS AI) ============ -->
   <section id="screen-game" class="screen" hidden>
     <div class="panel-head">
       <button class="back-btn" data-goto="menu">&larr; メニューへ</button>
       <h2 id="game-mode-title">対戦</h2>
+      <span id="learn-badge" class="learn-badge" hidden>🧠 学習更新: 0回</span>
       <button id="pause-btn" class="ghost-btn">一時停止</button>
     </div>
     <div id="game-arena">
@@ -112,6 +95,7 @@
         <h3 id="overlay-title">一時停止</h3>
         <button id="overlay-resume-btn" class="menu-btn small">再開</button>
         <button id="overlay-restart-btn" class="menu-btn small">もう一度</button>
+        <button id="mirror-reset-btn" class="ghost-btn" hidden>模倣AIをリセットして学習し直す</button>
         <button class="menu-btn small" data-goto="menu">メニューへ</button>
       </div>
     </div>
