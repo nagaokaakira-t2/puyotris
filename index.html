@@ -20,7 +20,7 @@
       <span class="menu-btn-title">2人対戦</span>
       <span class="menu-btn-sub">1台のキーボードで対戦</span>
     </button>
-    <button class="menu-btn" data-goto="vsai">
+    <button class="menu-btn" data-goto="vsai-level">
       <span class="menu-btn-title">AI対戦</span>
       <span class="menu-btn-sub">遺伝的アルゴリズムで学習したAIと対戦</span>
     </button>
@@ -66,6 +66,28 @@
       <p>② <strong>色消し</strong> - 同じ色のブロックが上下左右に4つ以上つながると消えます(ぷよぷよ方式)。</p>
       <p>消えたあとブロックは1マスずつ落下し、そこでまた消えると<strong>連鎖</strong>になります。連鎖やライン消しが多いほど、相手の盤面に「おじゃまブロック」を送り込めます。相手より先に積み上がってしまったら負けです。</p>
     </div>
+  </section>
+
+  <!-- ============ VS AI - LEVEL SELECT ============ -->
+  <section id="screen-vsai-level" class="screen" hidden>
+    <div class="panel-head">
+      <button class="back-btn" data-goto="menu">&larr; メニューへ</button>
+      <h2>AI対戦 - 難易度選択</h2>
+    </div>
+    <nav class="level-select">
+      <button class="menu-btn level-btn" data-level="easy">
+        <span class="menu-btn-title">初心者</span>
+        <span class="menu-btn-sub">AIの反応が遅く、たまにミスもする。おじゃまブロックも控えめ</span>
+      </button>
+      <button class="menu-btn level-btn" data-level="normal">
+        <span class="menu-btn-title">標準</span>
+        <span class="menu-btn-sub">AIの実力をそのまま発揮。ちょうどいい歯ごたえ</span>
+      </button>
+      <button class="menu-btn level-btn" data-level="hard">
+        <span class="menu-btn-title">上級</span>
+        <span class="menu-btn-sub">反応が速くミスなし。おじゃまブロックも強気に送ってくる</span>
+      </button>
+    </nav>
   </section>
 
   <!-- ============ GAME (2P / VS AI) ============ -->
