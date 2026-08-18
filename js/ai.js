@@ -60,8 +60,12 @@ export function scoreFeatures(features, weights) {
   return score;
 }
 
-export function bestMove(board, piece, weights = DEFAULT_WEIGHTS) {
-  let best = null;
+// Enumerates every legal (rotation, x, landing-y) placement for `piece`
+// on `board`. Shared by bestMove() and the "mistake" logic in
+// AIController, which picks a random entry from this list instead of
+// the best-scoring one to simulate a weaker player.
+export function allMoves(board, piece) {
+  const moves = [];
   for (let rot = 0; rot < 4; rot++) {
     const test = piece.clone();
     test.rot = rot;
@@ -75,25 +79,36 @@ export function bestMove(board, piece, weights = DEFAULT_WEIGHTS) {
       let y = 0;
       while (test.fits(board, rot, x, y + 1)) y++;
       if (!test.fits(board, rot, x, y)) continue;
+      moves.push({ rot, x, y });
+    }
+  }
+  return moves;
+}
 
-      const sim = board.clone();
-      sim.stampPiece(test.cells(rot, x, y));
-      if (sim.isToppedOut()) continue;
-      const clearResult = sim.resolveClears();
-      const features = extractFeatures(sim, clearResult);
-      const score = scoreFeatures(features, weights);
+export function bestMove(board, piece, weights = DEFAULT_WEIGHTS) {
+  let best = null;
+  for (const { rot, x, y } of allMoves(board, piece)) {
+    const sim = board.clone();
+    sim.stampPiece(piece.cells(rot, x, y));
+    if (sim.isToppedOut()) continue;
+    const clearResult = sim.resolveClears();
+    const features = extractFeatures(sim, clearResult);
+    const score = scoreFeatures(features, weights);
 
-      if (!best || score > best.score) {
-        best = { rot, x, y, score, features };
-      }
+    if (!best || score > best.score) {
+      best = { rot, x, y, score, features };
     }
   }
   return best;
 }
 
 export class AIController {
-  constructor(weights = DEFAULT_WEIGHTS) {
+  // mistakeChance (0〜1): 新しいピースが来るたびにこの確率で最善手を
+  // 無視し、合法手からランダムに1つ選ぶ。初心者向け難易度で「たまに
+  // 変な置き方をする」弱いAIを表現するためのもの。
+  constructor(weights = DEFAULT_WEIGHTS, mistakeChance = 0) {
     this.weights = weights;
+    this.mistakeChance = mistakeChance;
     this.plan = null;
   }
 
@@ -103,7 +118,13 @@ export class AIController {
 
   nextAction(board, piece) {
     if (!this.plan) {
-      const move = bestMove(board, piece, this.weights);
+      let move;
+      if (this.mistakeChance > 0 && Math.random() < this.mistakeChance) {
+        const moves = allMoves(board, piece);
+        move = moves.length ? moves[Math.floor(Math.random() * moves.length)] : null;
+      } else {
+        move = bestMove(board, piece, this.weights);
+      }
       this.plan = move ? { rot: move.rot, x: move.x } : { rot: piece.rot, x: piece.x };
     }
     if (piece.rot !== this.plan.rot) {
