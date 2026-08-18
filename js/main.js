@@ -36,6 +36,27 @@ document.addEventListener('click', (e) => {
 showScreen('menu');
 
 // ---------------------------------------------------------------
+// AI difficulty levels
+// ---------------------------------------------------------------
+// mistakeChance: 最善手を無視してランダムな手を選ぶ確率(0〜1)
+// actionIntervalMs: 1手を打つまでの反応間隔(大きいほど反応が遅い)
+// attackMultiplier: AIが相手に送るおじゃまブロック量の倍率
+const AI_LEVELS = {
+  easy: { label: '初心者', mistakeChance: 0.35, actionIntervalMs: 220, attackMultiplier: 0.5 },
+  normal: { label: '標準', mistakeChance: 0.08, actionIntervalMs: 90, attackMultiplier: 1 },
+  hard: { label: '上級', mistakeChance: 0, actionIntervalMs: 55, attackMultiplier: 1.3 },
+};
+let selectedAiLevel = 'normal';
+
+document.querySelectorAll('.level-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    selectedAiLevel = btn.dataset.level;
+    startGame('vsai');
+    showScreen('game');
+  });
+});
+
+// ---------------------------------------------------------------
 // Key config screen
 // ---------------------------------------------------------------
 let currentPlayer = 'p1';
@@ -145,7 +166,7 @@ let aiWeights = { ...DEFAULT_WEIGHTS };
 // Game loop (2P local or vs AI)
 // ---------------------------------------------------------------
 const CELL_SIZE = 24;
-const AI_ACTION_INTERVAL_MS = 90;
+let aiActionIntervalMs = 90; // 選択された難易度に応じてstartGame()で上書きされる
 
 let rafId = null;
 let paused = false;
@@ -181,12 +202,18 @@ function startGame(mode) {
   renderers.p1.resize(COLS, ROWS);
   renderers.p2.resize(COLS, ROWS);
 
+  const level = mode === 'vsai' ? AI_LEVELS[selectedAiLevel] : null;
+
   games.p1 = new Game({
     onAttack: (amt) => games.p2 && games.p2.receiveGarbage(amt),
     onGameOver: () => endMatch('p2'),
   });
   games.p2 = new Game({
-    onAttack: (amt) => games.p1 && games.p1.receiveGarbage(amt),
+    onAttack: (amt) => {
+      if (!games.p1) return;
+      const scaled = level ? Math.round(amt * level.attackMultiplier) : amt;
+      games.p1.receiveGarbage(scaled);
+    },
     onGameOver: () => endMatch('p1'),
   });
 
@@ -194,8 +221,10 @@ function startGame(mode) {
   if (mode === '2p') {
     inputs.p2 = new InputManager(getKeymap('p2'));
   } else {
-    aiController = new AIController(aiWeights);
+    aiController = new AIController(aiWeights, level.mistakeChance);
+    aiActionIntervalMs = level.actionIntervalMs;
     aiTimer = 0;
+    document.getElementById('label-p2').textContent = `AI (${level.label})`;
   }
 
   document.getElementById('game-overlay').hidden = true;
@@ -262,8 +291,8 @@ function loop(ts) {
     if (!g2.gameOver) {
       aiTimer += dt;
       const aiActions = [];
-      while (aiTimer >= AI_ACTION_INTERVAL_MS) {
-        aiTimer -= AI_ACTION_INTERVAL_MS;
+      while (aiTimer >= aiActionIntervalMs) {
+        aiTimer -= aiActionIntervalMs;
         aiActions.push(aiController.nextAction(g2.board, g2.current));
       }
       g2.tick(dt, aiActions);
