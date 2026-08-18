@@ -180,6 +180,7 @@ html, body {
   position: fixed; inset: 0; background: rgba(5,6,14,0.8);
   display: flex; align-items: center; justify-content: center; z-index: 50;
 }
+#key-capture-overlay[hidden] { display: none; }
 .capture-card {
   background: var(--panel-2); border: 1px solid var(--magenta);
   border-radius: var(--radius); padding: 28px 34px; text-align: center;
