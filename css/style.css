@@ -248,3 +248,4 @@ canvas { background: var(--bg-deep); border-radius: 8px; border: 1px solid rgba(
 }
 
 footer { text-align: center; color: var(--text-dim); font-size: 11px; margin-top: 40px; }
+.game-overlay[hidden] { display: none; }
