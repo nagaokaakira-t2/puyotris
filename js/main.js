@@ -7,8 +7,8 @@ import { COLS, ROWS, ACTION_LABELS } from './constants.js';
 import { Game } from './game.js';
 import { Renderer } from './render.js';
 import { InputManager, getKeymap, setKey, resetKeymap, findKeyConflicts } from './input.js';
-import { AIController, DEFAULT_WEIGHTS } from './ai.js';
-import { initialPopulation, runGeneration, nextPopulation } from './genetic.js';
+import { AIController, DEFAULT_WEIGHTS, updateWeightsTowardChoice } from './ai.js';
+import { initialPopulation, runGeneration, nextPopulation, randomWeights } from './genetic.js';
 
 // ---------------------------------------------------------------
 // Screen navigation
@@ -23,7 +23,7 @@ document.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-goto]');
   if (!btn) return;
   const dest = btn.dataset.goto;
-  if (dest === '2p' || dest === 'vsai') {
+  if (dest === '2p' || dest === 'vsai' || dest === 'mirror') {
     startGame(dest);
     showScreen('game');
   } else {
@@ -34,27 +34,6 @@ document.addEventListener('click', (e) => {
 });
 
 showScreen('menu');
-
-// ---------------------------------------------------------------
-// AI difficulty levels
-// ---------------------------------------------------------------
-// mistakeChance: 最善手を無視してランダムな手を選ぶ確率(0〜1)
-// actionIntervalMs: 1手を打つまでの反応間隔(大きいほど反応が遅い)
-// attackMultiplier: AIが相手に送るおじゃまブロック量の倍率
-const AI_LEVELS = {
-  easy: { label: '初心者', mistakeChance: 0.35, actionIntervalMs: 220, attackMultiplier: 0.5 },
-  normal: { label: '標準', mistakeChance: 0.08, actionIntervalMs: 90, attackMultiplier: 1 },
-  hard: { label: '上級', mistakeChance: 0, actionIntervalMs: 55, attackMultiplier: 1.3 },
-};
-let selectedAiLevel = 'normal';
-
-document.querySelectorAll('.level-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    selectedAiLevel = btn.dataset.level;
-    startGame('vsai');
-    showScreen('game');
-  });
-});
 
 // ---------------------------------------------------------------
 // Key config screen
@@ -163,10 +142,41 @@ let aiWeights = { ...DEFAULT_WEIGHTS };
 })();
 
 // ---------------------------------------------------------------
+// "Mirror AI" weights: an AI that learns YOUR placements online,
+// live, while you play against it (see updateWeightsTowardChoice
+// in ai.js). Persisted separately from the genetic-algorithm AI's
+// weights so the two AIs stay distinct opponents.
+// ---------------------------------------------------------------
+const MIRROR_STORAGE_KEY = 'puyotris.mirrorweights.v1';
+
+function loadMirrorWeights() {
+  try {
+    const saved = localStorage.getItem(MIRROR_STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch { /* ignore corrupt storage */ }
+  return { ...DEFAULT_WEIGHTS };
+}
+
+function saveMirrorWeights(weights) {
+  try {
+    localStorage.setItem(MIRROR_STORAGE_KEY, JSON.stringify(weights));
+  } catch { /* storage full/unavailable - learning just won't persist */ }
+}
+
+function resetMirrorWeights() {
+  const fresh = randomWeights();
+  saveMirrorWeights(fresh);
+  return fresh;
+}
+
+let mirrorWeights = null;
+let mirrorUpdateCount = 0;
+
+// ---------------------------------------------------------------
 // Game loop (2P local or vs AI)
 // ---------------------------------------------------------------
 const CELL_SIZE = 24;
-let aiActionIntervalMs = 90; // 選択された難易度に応じてstartGame()で上書きされる
+const AI_ACTION_INTERVAL_MS = 90;
 
 let rafId = null;
 let paused = false;
@@ -187,13 +197,23 @@ function stopGameLoop() {
   document.getElementById('game-overlay').hidden = true;
 }
 
+const MODE_TITLES = { '2p': '2人対戦', vsai: 'AI対戦', mirror: '模倣AI対戦' };
+
 function startGame(mode) {
   stopGameLoop();
   currentMode = mode;
   paused = false;
-  document.getElementById('game-mode-title').textContent = mode === '2p' ? '2人対戦' : 'AI対戦';
+  document.getElementById('game-mode-title').textContent = MODE_TITLES[mode] || '対戦';
   document.getElementById('label-p1').textContent = 'PLAYER 1';
-  document.getElementById('label-p2').textContent = mode === '2p' ? 'PLAYER 2' : 'AI';
+  document.getElementById('label-p2').textContent = mode === '2p' ? 'PLAYER 2' : mode === 'mirror' ? 'MIRROR AI' : 'AI';
+
+  const learnBadge = document.getElementById('learn-badge');
+  learnBadge.hidden = mode !== 'mirror';
+  mirrorUpdateCount = 0;
+  if (mode === 'mirror') {
+    mirrorWeights = loadMirrorWeights();
+    updateLearnBadge();
+  }
 
   const canvasP1 = document.getElementById('canvas-p1');
   const canvasP2 = document.getElementById('canvas-p2');
@@ -202,18 +222,24 @@ function startGame(mode) {
   renderers.p1.resize(COLS, ROWS);
   renderers.p2.resize(COLS, ROWS);
 
-  const level = mode === 'vsai' ? AI_LEVELS[selectedAiLevel] : null;
-
   games.p1 = new Game({
     onAttack: (amt) => games.p2 && games.p2.receiveGarbage(amt),
     onGameOver: () => endMatch('p2'),
+    onBeforeLock: mode === 'mirror'
+      ? (board, piece) => {
+          const before = { ...mirrorWeights };
+          updateWeightsTowardChoice(mirrorWeights, board, piece, { rot: piece.rot, x: piece.x });
+          const changed = Object.keys(mirrorWeights).some((k) => mirrorWeights[k] !== before[k]);
+          if (changed) {
+            mirrorUpdateCount++;
+            saveMirrorWeights(mirrorWeights);
+            updateLearnBadge();
+          }
+        }
+      : undefined,
   });
   games.p2 = new Game({
-    onAttack: (amt) => {
-      if (!games.p1) return;
-      const scaled = level ? Math.round(amt * level.attackMultiplier) : amt;
-      games.p1.receiveGarbage(scaled);
-    },
+    onAttack: (amt) => games.p1 && games.p1.receiveGarbage(amt),
     onGameOver: () => endMatch('p1'),
   });
 
@@ -221,10 +247,8 @@ function startGame(mode) {
   if (mode === '2p') {
     inputs.p2 = new InputManager(getKeymap('p2'));
   } else {
-    aiController = new AIController(aiWeights, level.mistakeChance);
-    aiActionIntervalMs = level.actionIntervalMs;
+    aiController = new AIController(mode === 'mirror' ? mirrorWeights : aiWeights);
     aiTimer = 0;
-    document.getElementById('label-p2').textContent = `AI (${level.label})`;
   }
 
   document.getElementById('game-overlay').hidden = true;
@@ -232,12 +256,26 @@ function startGame(mode) {
   rafId = requestAnimationFrame(loop);
 }
 
+function updateLearnBadge() {
+  document.getElementById('learn-badge').textContent = `🧠 学習更新: ${mirrorUpdateCount}回`;
+}
+
+document.getElementById('mirror-reset-btn').addEventListener('click', () => {
+  mirrorWeights = resetMirrorWeights();
+  if (aiController) aiController.weights = mirrorWeights;
+  mirrorUpdateCount = 0;
+  updateLearnBadge();
+});
+
 function endMatch(winner) {
   paused = true;
   const overlay = document.getElementById('game-overlay');
   const title = document.getElementById('overlay-title');
+  document.getElementById('mirror-reset-btn').hidden = currentMode !== 'mirror';
   if (currentMode === 'vsai') {
     title.textContent = winner === 'p1' ? 'あなたの勝ち！' : 'AIの勝ち！';
+  } else if (currentMode === 'mirror') {
+    title.textContent = winner === 'p1' ? 'あなたの勝ち！' : 'ミラーAIの勝ち！';
   } else {
     title.textContent = (winner === 'p1' ? 'PLAYER 1' : 'PLAYER 2') + ' の勝ち！';
   }
@@ -261,6 +299,7 @@ function togglePause() {
   paused = !paused;
   const overlay = document.getElementById('game-overlay');
   document.getElementById('overlay-title').textContent = '一時停止';
+  document.getElementById('mirror-reset-btn').hidden = currentMode !== 'mirror';
   overlay.hidden = !paused;
   if (!paused) {
     lastTs = 0;
@@ -291,8 +330,8 @@ function loop(ts) {
     if (!g2.gameOver) {
       aiTimer += dt;
       const aiActions = [];
-      while (aiTimer >= aiActionIntervalMs) {
-        aiTimer -= aiActionIntervalMs;
+      while (aiTimer >= AI_ACTION_INTERVAL_MS) {
+        aiTimer -= AI_ACTION_INTERVAL_MS;
         aiActions.push(aiController.nextAction(g2.board, g2.current));
       }
       g2.tick(dt, aiActions);
