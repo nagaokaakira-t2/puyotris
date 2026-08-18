@@ -18,7 +18,7 @@ function shuffledBag() {
 }
 
 export class Game {
-  constructor({ onAttack, onGameOver, onLock, onChain } = {}) {
+  constructor({ onAttack, onGameOver, onLock, onChain, onBeforeLock } = {}) {
     this.board = new Board();
     this.bag = shuffledBag();
     this.queue = [Piece.random(), Piece.random(), Piece.random()];
@@ -41,6 +41,7 @@ export class Game {
     this.onGameOver = onGameOver || (() => {});
     this.onLock = onLock || (() => {});
     this.onChain = onChain || (() => {});
+    this.onBeforeLock = onBeforeLock || null;
     this._clock = 0;
   }
 
@@ -98,6 +99,7 @@ export class Game {
   }
 
   _lockPiece() {
+    if (this.onBeforeLock) this.onBeforeLock(this.board, this.current);
     this.board.stampPiece(this.current.cells());
     this.onLock();
     const result = this.board.resolveClears();
