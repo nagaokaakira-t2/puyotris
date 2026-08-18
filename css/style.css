@@ -23,6 +23,12 @@
 
 * { box-sizing: border-box; }
 
+/* The `hidden` attribute must always win over any `display` set by a
+   more specific selector below (e.g. `.game-overlay { display:flex }`).
+   Without this, elements with `hidden` still render because author
+   CSS on the same element overrides the UA's default [hidden] rule. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -75,14 +81,6 @@ html, body {
 }
 @media (max-width: 560px) {
   #screen-menu { grid-template-columns: 1fr; }
-}
-
-.level-select {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 14px;
-  max-width: 480px;
-  margin: 0 auto;
 }
 
 .menu-btn {
@@ -141,6 +139,16 @@ html, body {
 }
 .panel-head h2 { margin: 0; font-size: 18px; flex: 1; }
 
+.learn-badge {
+  font-size: 12px;
+  color: var(--gold);
+  background: rgba(255,210,63,0.1);
+  border: 1px solid rgba(255,210,63,0.35);
+  border-radius: 999px;
+  padding: 5px 12px;
+  white-space: nowrap;
+}
+
 /* ---------- Key config ---------- */
 .keyconfig-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
 .tab-btn {
@@ -188,7 +196,6 @@ html, body {
   position: fixed; inset: 0; background: rgba(5,6,14,0.8);
   display: flex; align-items: center; justify-content: center; z-index: 50;
 }
-#key-capture-overlay[hidden] { display: none; }
 .capture-card {
   background: var(--panel-2); border: 1px solid var(--magenta);
   border-radius: var(--radius); padding: 28px 34px; text-align: center;
@@ -248,4 +255,3 @@ canvas { background: var(--bg-deep); border-radius: 8px; border: 1px solid rgba(
 }
 
 footer { text-align: center; color: var(--text-dim); font-size: 11px; margin-top: 40px; }
-.game-overlay[hidden] { display: none; }
